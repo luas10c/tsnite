@@ -96,6 +96,8 @@ async function handler(): Promise<void> {
       }
     }
 
+    const ends = performance.now()
+
     const entrypoint = entry
       .replace(join(options.sourceRoot, '/'), '')
       .replace(/(.+).ts$/, '$1.js')
@@ -106,7 +108,6 @@ async function handler(): Promise<void> {
 
     pids.add(pid as number)
 
-    const ends = performance.now()
     process.stdout.write(
       `\x1b[1m${gradient(['#5e23e6', '#f88bc7'])(
         `⚡ Compiled in ${(ends - starts).toFixed(2)}ms`
@@ -207,6 +208,8 @@ async function handler(): Promise<void> {
           }
         }
 
+        const ends = performance.now()
+
         const entrypoint = entry
           .replace(join(options.sourceRoot, '/'), '')
           .replace(/(.+).ts$/, '$1.js')
@@ -217,7 +220,6 @@ async function handler(): Promise<void> {
 
         pids.add(pid as number)
 
-        const ends = performance.now()
         process.stdout.write(
           `\x1b[1m${gradient(['#5e23e6', '#f88bc7'])(
             `⚡ Compiled in ${(ends - starts).toFixed(2)}ms`
