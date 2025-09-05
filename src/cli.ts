@@ -17,7 +17,7 @@ program
   .name(name)
   .description(description)
   .version(version, '-v, --version', 'Output the current version')
-  .option('--source-root <string>', 'Source Root', 'src')
+  .option('--source-root <string>', 'Source Root', '.')
   .option('--watch', 'Enables watch mode', false)
   .option('--include-assets', 'Include static files in the build', false)
   .argument('<string>', 'Entrypoint file')

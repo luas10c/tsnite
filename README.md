@@ -33,7 +33,7 @@ With `tsnite` installed, you can use it directly in your terminal to run TypeScr
 ### Run a TypeScript file
 
 ```bash
-npx tsnite --source-root . caminho/do/arquivo.ts
+npx tsnite caminho/do/arquivo.ts
 ```
 
 This will execute the specified TypeScript file, allowing you to quickly test and run scripts during development.
