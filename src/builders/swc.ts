@@ -1,5 +1,5 @@
-import { transform } from '@swc/core'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { transformFile } from '@swc/core'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join, parse } from 'node:path'
 
 import { loadTsConfigPaths } from '#/utils/tsconfig-loader'
@@ -12,8 +12,7 @@ export async function compile(
   filename: string,
   sourceRoot: string
 ): Promise<void> {
-  const string = await readFile(filename, 'utf-8')
-  const { code, map } = await transform(string, {
+  const { code, map } = await transformFile(filename, {
     jsc: {
       baseUrl: join(process.cwd(), '.'),
       parser: {
@@ -39,6 +38,7 @@ export async function compile(
     module: {
       type: 'es6',
       strict: true,
+      outFileExtension: 'js',
       resolveFully: true
     },
 
