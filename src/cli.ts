@@ -41,7 +41,8 @@ let starts: number = 0
 export async function* discover(path: string): AsyncGenerator<string> {
   const entries = await readdir(path)
 
-  const ignores = /^(node_modules|dist|coverage|tests|\..+)/
+  const ignores =
+    /^(?:node_modules|dist|coverage|tests|\..+|.*\.(?:spec|test)\.ts)$/
   for (const entry of entries) {
     if (ignores.test(entry)) continue
 
