@@ -111,7 +111,7 @@ async function handler(): Promise<void> {
 
     process.stdout.write(
       `\x1b[1m${gradient(['#5e23e6', '#f88bc7'])(
-        `⚡ Compiled in ${(ends - starts).toFixed(2)}ms`
+        `➤ Compiled successfully in ${(ends - starts).toFixed(2)}ms`
       )}\x1b[0m\n`
     )
   } catch (err) {
@@ -223,7 +223,7 @@ async function handler(): Promise<void> {
 
         process.stdout.write(
           `\x1b[1m${gradient(['#5e23e6', '#f88bc7'])(
-            `⚡ Compiled in ${(ends - starts).toFixed(2)}ms`
+            `› Compiled successfully in ${(ends - starts).toFixed(2)}ms`
           )}\x1b[0m\n`
         )
       } catch (err) {
