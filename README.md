@@ -1,18 +1,17 @@
 # tsnite
 
+[![npm version](https://img.shields.io/npm/v/tsnite.svg)](https://www.npmjs.com/package/tsnite)
+[![Eslint](https://img.shields.io/badge/ESLint-3A33D1?logo=eslint)](https://img.shields.io/badge/ESLint-3A33D1?logo=eslint)
+[![prettier](https://img.shields.io/badge/Prettier-de9954?logo=prettier&logoColor=ffffff)](https://img.shields.io/badge/Prettier-de9954?logo=prettier&logoColor=ffffff)
+[![github license](https://img.shields.io/github/license/luas10c/tsnite)](https://img.shields.io/github/license/luas10c/tsnite)
+
 ```
 TypeScript at full throttle—fast, safe, unstoppable. 🚀
 ```
 
 `tsnite` is a tool that accelerates TypeScript project development, offering a streamlined build and run experience. Ideal for developers seeking productivity without compromising security and performance.
 
-## ⚡ Recursos principais
-
-- **Execução rápida de arquivos TypeScript** sem build manual.
-- **Integração simples** com projetos existentes.
-- **Suporte a múltiplos roots** e configurações flexíveis de projeto.
-
-## 🚀 Install
+### 🚀 Installation
 
 To add `tsnite` to your project as a development dependency, run:
 
@@ -26,23 +25,54 @@ Or, if you're using Yarn:
 yarn add --dev tsnite
 ```
 
-## 🛠️ How to use
+### ⚡ Features
+
+- **Decorators** first-class support for TypeScript decorators.
+- **Simple integration** with existing projects.
+- **ESM Support** native support for modern JavaScript modules.
+- **Automatic `tsconfig.json` loading** – respects your project configuration.
+
+### 🛠️ How to use
 
 With `tsnite` installed, you can use it directly in your terminal to run TypeScript files without needing to compile them first.
 
 ### Run a TypeScript file
 
 ```bash
-npx tsnite caminho/do/arquivo.ts
+npx tsnite path/to/file.ts
 ```
 
 This will execute the specified TypeScript file, allowing you to quickly test and run scripts during development.
 
 ## 💡 Tips & Best Practices
 
-- Keep your TypeScript project configuration (tsconfig.json) up to date for best performance.
-- Use multiple source roots for large projects to organize files efficiently.
-- Combine tsnite with scripts in package.json for a smoother development workflow.
+- **Use with `package.json` scripts** – integrate `tsnite` into `npm` or `yarn` scripts for a smoother workflow.
+  Example:
+  ```json
+  {
+    "scripts": {
+      //...
+      "dev": "tsnite --watch --include-assets src/index.ts"
+    }
+  }
+  ```
+- **Debugging with VS Code** when debugging, you may need to configure outFiles in .vscode/launch.json to match the temporary output directory used by tsnite:
+  Example:
+  ```json
+  {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        //...
+        "outFiles": [
+          "/tmp/tsnite/**/*.js",
+          "C:\Users\<SeuUsuario>\AppData\Local\Temp"
+        ] // Use one or the other, first for Linux, second for Windows
+        // ...
+      }
+    ]
+  }
+  ```
 
 ## 📚 More information
 
