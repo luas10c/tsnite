@@ -35,6 +35,20 @@ type Args = {
   sourceRoot: string
 }
 
+function cleanup() {
+  for (const pid of pids.values()) {
+    try {
+      process.kill(pid, 'SIGTERM')
+    } catch {
+      // processo já morreu
+    }
+  }
+  process.exit(0)
+}
+
+process.on('SIGINT', cleanup)
+process.on('SIGTERM', cleanup)
+
 async function handler(): Promise<void> {
   const options = program.opts<Args>()
 

@@ -1,15 +1,39 @@
 import { transformFile } from '@swc/core'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { readFile, access, constants } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import json5 from 'json5'
 import path from 'node:path'
 
-async function exists(path: string) {
+import { resolveCache, existsWithCache } from './cache'
+
+const tsconfigCache: {
+  paths: Record<string, string[]> | null
+  baseUrl: string | null
+} = { paths: null, baseUrl: null }
+
+async function loadTSConfig(): Promise<{
+  paths: Record<string, string[]> | null
+  baseUrl: string | null
+}> {
+  if (tsconfigCache.paths !== null && tsconfigCache.baseUrl !== null) {
+    return tsconfigCache
+  }
+
   try {
-    await access(path, constants.F_OK)
-    return true
+    const data = await readFile(
+      path.join(process.cwd(), 'tsconfig.json'),
+      'utf-8'
+    )
+    const {
+      compilerOptions: { paths, baseUrl }
+    } = json5.parse(data)
+    tsconfigCache.paths = paths || null
+    tsconfigCache.baseUrl = baseUrl || process.cwd()
+    return tsconfigCache
   } catch {
-    return false
+    tsconfigCache.paths = null
+    tsconfigCache.baseUrl = process.cwd()
+    return tsconfigCache
   }
 }
 
@@ -20,6 +44,16 @@ export async function resolve(
 ) {
   if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
     return next(specifier, ctx)
+  }
+
+  const cacheKey = `${ctx.parentURL}::${specifier}`
+  const cached = resolveCache.get(cacheKey)
+  if (cached) {
+    return {
+      url: cached,
+      format: 'module',
+      shortCircuit: true
+    }
   }
 
   const parentPath = fileURLToPath(ctx.parentURL)
@@ -40,34 +74,18 @@ export async function resolve(
   ]
 
   for (const file of tryFiles) {
-    if (await exists(file)) {
+    if (await existsWithCache(file)) {
+      const url = pathToFileURL(file).href
+      resolveCache.set(cacheKey, url)
       return {
-        url: pathToFileURL(file).href,
+        url,
         format: 'module',
         shortCircuit: true
       }
     }
   }
-}
 
-async function loadTsconfigPaths(): Promise<
-  | {
-      [from: string]: string[]
-    }
-  | undefined
-> {
-  try {
-    const data = await readFile(
-      path.join(process.cwd(), 'tsconfig.json'),
-      'utf-8'
-    )
-    const {
-      compilerOptions: { paths }
-    } = json5.parse(data)
-    return paths
-  } catch {
-    return {}
-  }
+  return next(specifier, ctx)
 }
 
 export async function load(
@@ -79,16 +97,16 @@ export async function load(
     return next(url, ctx)
   }
 
-  const paths = await loadTsconfigPaths()
+  const { paths, baseUrl } = await loadTSConfig()
 
   const filename = fileURLToPath(url)
   const { code } = await transformFile(filename, {
     filename,
     jsc: {
-      baseUrl: process.cwd(),
+      baseUrl: baseUrl || process.cwd(),
       parser: {
         syntax: 'typescript',
-        tsx: false,
+        tsx: url.endsWith('.tsx'),
         decorators: true
       },
       target: 'es2022',
@@ -104,7 +122,7 @@ export async function load(
           development: true
         }
       },
-      paths
+      paths: paths ?? {}
     },
     module: {
       type: 'es6',
