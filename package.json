@@ -9,10 +9,16 @@
     "nodejs",
     "typescript"
   ],
-  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
   "bin": {
     "tsnite": "dist/cli.js"
   },
+  "type": "module",
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "tsc -p tsconfig.build.json",
