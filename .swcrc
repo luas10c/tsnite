@@ -1,0 +1,20 @@
+{
+  "$schema": "https://swc.rs/schema.json",
+  "jsc": {
+    "baseUrl": "./",
+    "parser": {
+      "syntax": "typescript"
+    },
+
+    "target": "es2022",
+    "keepClassNames": true,
+    "paths": {
+      "#/*": ["./src/*"]
+    }
+  },
+  "module": {
+    "type": "es6",
+    "strict": true,
+    "importInterop": "swc"
+  }
+}
