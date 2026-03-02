@@ -23,7 +23,7 @@
     "prebuild": "rimraf dist",
     "build": "tsc -p tsconfig.build.json",
     "postbuild": "tsc-alias -f -p tsconfig.build.json",
-    "lint": "eslint . --config eslint.config.js",
+    "lint": "eslint . --cache",
     "test": "jest --passWithNoTests --verbose",
     "test:ci": "jest --passWithNoTests --ci",
     "test:watch": "jest --passWithNoTests --watch",
