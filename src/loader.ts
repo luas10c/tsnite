@@ -28,7 +28,7 @@ async function loadTSConfig(): Promise<{
       compilerOptions: { paths, baseUrl }
     } = json5.parse(data)
     tsconfigCache.paths = paths || null
-    tsconfigCache.baseUrl = baseUrl || process.cwd()
+    tsconfigCache.baseUrl = path.join(process.cwd(), baseUrl) || process.cwd()
     return tsconfigCache
   } catch {
     tsconfigCache.paths = null
