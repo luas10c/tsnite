@@ -8,5 +8,7 @@ coverage
 
 .DS_Store
 
+.eslintcache
+
 .env*
 !.env.example
