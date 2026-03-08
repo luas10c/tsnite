@@ -52,7 +52,7 @@ This will execute the specified TypeScript file, allowing you to quickly test an
   {
     "scripts": {
       //...
-      "dev": "tsnite --watch --include-assets src/index.ts"
+      "dev": "tsnite watch --include src --exclude uploads --ext js,ts,json src/index.ts"
     }
   }
   ```
