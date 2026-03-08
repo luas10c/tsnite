@@ -5,13 +5,8 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fork } from 'node:child_process'
 import { watch } from 'chokidar'
-import { createRequire } from 'node:module'
 
-const require = createRequire(import.meta.dirname)
-
-const { name, description, version } = require(
-  join(import.meta.dirname, '..', 'package.json')
-)
+import { name, description, version } from './metadata'
 
 const pids = new Set<number>()
 
