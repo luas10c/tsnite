@@ -1,9 +1,9 @@
 import { transformFile } from '@swc/core'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFile } from 'node:fs/promises'
-import json5 from 'json5'
 import path from 'node:path'
 
+import { parse } from './parse'
 import { resolveCache, existsWithCache } from './cache'
 
 const tsconfigCache: {
@@ -26,7 +26,13 @@ async function loadTSConfig(): Promise<{
     )
     const {
       compilerOptions: { paths, baseUrl }
-    } = json5.parse(data)
+    } = parse<{
+      compilerOptions: {
+        paths: Record<string, string[]> | null
+        baseUrl: string
+      }
+    }>(data)
+
     tsconfigCache.paths = paths || null
     tsconfigCache.baseUrl = path.join(process.cwd(), baseUrl) || process.cwd()
     return tsconfigCache
