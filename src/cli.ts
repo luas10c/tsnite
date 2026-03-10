@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { program } from 'commander'
-import { extname, join, resolve, relative } from 'node:path'
+import { extname, join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fork } from 'node:child_process'
 import { watch } from 'chokidar'
@@ -48,7 +48,7 @@ function spawn(entry: string, nodeArgs: string[]) {
     ]
   })
 
-  pids.add(pid as number)
+  if (pid) pids.add(pid)
 }
 
 function normalizePath(value: string) {
@@ -70,10 +70,8 @@ type WatchOptions = {
 }
 
 function createWatchConfig(options: WatchOptions) {
-  const sourceRoot = resolve(process.cwd(), options.sourceRoot)
-
   const includePaths = options.include.map((value) =>
-    resolve(sourceRoot, value)
+    join(options.sourceRoot, value)
   )
 
   const excludePaths = options.exclude.map(normalizePath).filter(Boolean)
@@ -82,52 +80,38 @@ function createWatchConfig(options: WatchOptions) {
 
   const allowedExts = new Set(options.ext.map(normalizeExt).filter(Boolean))
 
-  function ignored(filePath: string, stats?: Stats) {
+  function toRelativeFromRoot(sourceRoot: string, filePath: string): string {
     const rel = normalizePath(relative(sourceRoot, filePath))
+    return rel === '' ? '.' : rel
+  }
 
-    // fora do sourceRoot
-    if (rel.startsWith('../')) {
-      return true
-    }
+  function ignored(filePath: string, stats?: Stats) {
+    const rel = toRelativeFromRoot(options.sourceRoot, filePath)
 
-    // raiz do sourceRoot
-    if (rel === '') {
-      return false
-    }
+    if (rel === '..' || rel.startsWith('../')) return true
+    if (rel === '.') return false
 
     const segments = rel.split('/')
 
-    // ignora por nome de pasta/arquivo em qualquer nível
-    if (segments.some((segment) => excludeSet.has(segment))) {
+    if (segments.some((segment) => INTERNAL_IGNORED_PATHS.includes(segment)))
       return true
-    }
+    if (segments.some((segment) => excludeSet.has(segment))) return true
 
-    // ignora por caminho relativo completo
-    if (
-      excludePaths.some(
-        (excluded) => rel === excluded || rel.startsWith(excluded + '/')
-      )
-    ) {
-      return true
-    }
+    const isExcludedByPath = excludePaths.some(
+      (excluded) => rel === excluded || rel.startsWith(excluded + '/')
+    )
+    if (isExcludedByPath) return true
 
-    // nunca filtra diretório por extensão
-    if (stats?.isDirectory()) {
-      return false
-    }
+    if (!stats || stats.isDirectory()) return false
 
     const extension = extname(rel).slice(1).toLowerCase()
-
-    // se tiver lista de extensões, ignora arquivo fora dela
-    if (allowedExts.size > 0 && !allowedExts.has(extension)) {
-      return true
-    }
+    if (allowedExts.size > 0 && !allowedExts.has(extension)) return true
 
     return false
   }
 
   return {
-    sourceRoot,
+    sourceRoot: options.sourceRoot,
     paths: includePaths,
     ignored
   }
@@ -162,6 +146,8 @@ async function handler(
         //
       }
     }
+
+    pids.clear()
 
     spawn(entry, nodeArgs)
   })
