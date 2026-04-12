@@ -50,7 +50,9 @@ process.on('SIGTERM', function () {
 })
 
 function spawn(entry: string, nodeArgs: string[]) {
-  const child = fork(join(import.meta.dirname, '..', entry), {
+  const entryPath = isAbsolute(entry) ? entry : resolve(process.cwd(), entry)
+
+  const child = fork(entryPath, {
     stdio: 'inherit',
     execArgv: [
       '--enable-source-maps',
@@ -170,6 +172,8 @@ async function handler(
   nodeArgs: string[],
   isWatch: boolean
 ): Promise<void> {
+  const runtimeEntry = isAbsolute(entry) ? entry : resolve(process.cwd(), entry)
+
   async function restart(reason?: string) {
     process.stdout.write('\x1Bc')
 
@@ -202,7 +206,7 @@ async function handler(
     }
 
     clearResolveCache()
-    spawn(entry, nodeArgs)
+    spawn(runtimeEntry, nodeArgs)
   }
 
   const restartDebounced = debounce(restart, WATCH_DEBOUNCE_MS)
@@ -211,7 +215,7 @@ async function handler(
   if (isWatch) {
     console.log(yellow('Watching for changes...'))
   }
-  spawn(entry, nodeArgs)
+  spawn(runtimeEntry, nodeArgs)
 
   if (!isWatch) return
 
@@ -234,7 +238,7 @@ async function handler(
 
     await invalidateFileCaches(
       isAbsolute(changedPath) ? changedPath : (
-        resolve(import.meta.dirname, '..', changedPath)
+        resolve(process.cwd(), changedPath)
       )
     )
 
