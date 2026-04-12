@@ -50,7 +50,7 @@ process.on('SIGTERM', function () {
 })
 
 function spawn(entry: string, nodeArgs: string[]) {
-  const child = fork(join(process.cwd(), entry), {
+  const child = fork(join(import.meta.dirname, '..', entry), {
     stdio: 'inherit',
     execArgv: [
       '--enable-source-maps',
@@ -234,7 +234,7 @@ async function handler(
 
     await invalidateFileCaches(
       isAbsolute(changedPath) ? changedPath : (
-        resolve(process.cwd(), changedPath)
+        resolve(import.meta.dirname, '..', changedPath)
       )
     )
 

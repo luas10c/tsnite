@@ -6,7 +6,6 @@ import { createHash } from 'node:crypto'
 
 import { parse } from './parse'
 import {
-  clearTranspileCache,
   ensureTranspileCacheDir,
   existsWithCache,
   getTranspileCacheFile,
@@ -329,10 +328,14 @@ export async function load(
     return next(url, ctx)
   }
 
+  const { paths, baseUrl } = await loadTSConfig()
   const filename = fileURLToPath(url)
   const fileStats = await stat(filename)
   const configHash = hash(
-    JSON.stringify({ baseUrl: baseUrl || process.cwd(), paths: paths ?? {} })
+    JSON.stringify({
+      baseUrl: baseUrl || process.cwd(),
+      paths: paths ?? {}
+    })
   )
   const cachedCode = await readCachedTranspile(
     filename,
@@ -386,17 +389,4 @@ export async function load(
   })
 
   return { format: 'module', source: code, shortCircuit: true }
-}
-
-export async function resetLoaderState(options?: {
-  preserveTranspileCache?: boolean
-}): Promise<void> {
-  tsconfigCache.paths = null
-  tsconfigCache.baseUrl = null
-  transpileCache.clear()
-  resolveCache.clear()
-
-  if (!options?.preserveTranspileCache) {
-    await clearTranspileCache()
-  }
 }

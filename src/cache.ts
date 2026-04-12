@@ -1,17 +1,17 @@
 import { createHash } from 'node:crypto'
 import { mkdir, rm, stat } from 'node:fs/promises'
-import path from 'node:path'
+import { join, resolve } from 'node:path'
 
 export const resolveCache = new Map<string, string | null>()
 
 const statCache = new Map<string, { exists: boolean; mtime?: number }>()
 
 function getTranspileCacheDir(): string {
-  return path.join(process.cwd(), 'node_modules', '.cache', 'tsnite')
+  return join(import.meta.dirname, '..', 'node_modules', '.cache', 'tsnite')
 }
 
 function getTSConfigPath(): string {
-  return path.join(process.cwd(), 'tsconfig.json')
+  return join(import.meta.dirname, '..', 'tsconfig.json')
 }
 
 function hash(value: string): string {
@@ -42,7 +42,7 @@ export function invalidateStatCache(filePath: string): void {
 }
 
 export function getTranspileCacheFile(filePath: string): string {
-  return path.join(getTranspileCacheDir(), `${hash(filePath)}.json`)
+  return join(getTranspileCacheDir(), `${hash(filePath)}.json`)
 }
 
 export async function ensureTranspileCacheDir(): Promise<void> {
@@ -54,7 +54,7 @@ export async function clearTranspileCache(): Promise<void> {
 }
 
 export function isTSConfigPath(filePath: string): boolean {
-  return path.resolve(filePath) === getTSConfigPath()
+  return resolve(filePath) === getTSConfigPath()
 }
 
 export async function invalidateFileCaches(filePath: string): Promise<void> {
