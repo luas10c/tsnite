@@ -1,7 +1,7 @@
 import { transformFile } from '@swc/core'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFile, stat, writeFile } from 'node:fs/promises'
-import path from 'node:path'
+import { extname, join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 
 import { parse } from './parse'
@@ -29,7 +29,17 @@ const transpileCache = new Map<
 >()
 
 const MAX_TRANSPILE_CACHE_ENTRIES = 256
-const TS_SOURCE_RE = /\.(cts|mts|tsx|ts)$/
+const TS_EXTENSIONS = ['.cts', '.mts', '.tsx', '.ts']
+
+function hasTypeScriptExtension(value: string): boolean {
+  return TS_EXTENSIONS.some((extension) => value.endsWith(extension))
+}
+
+function isTypeScriptSpecifier(specifier: string): boolean {
+  const extension = extname(specifier)
+
+  return extension === '' || hasTypeScriptExtension(extension)
+}
 
 type TranspileCacheEntry = {
   code: string
@@ -137,7 +147,7 @@ async function loadTSConfig(): Promise<{
 
   try {
     const data = await readFile(
-      path.join(process.cwd(), 'tsconfig.json'),
+      join(import.meta.dirname, '..', 'tsconfig.json'),
       'utf-8'
     )
     const { compilerOptions } = parse<{
@@ -152,11 +162,13 @@ async function loadTSConfig(): Promise<{
 
     tsconfigCache.paths = paths || null
     tsconfigCache.baseUrl =
-      baseUrl ? path.resolve(process.cwd(), baseUrl) : process.cwd()
+      baseUrl ?
+        join(import.meta.dirname, '..', baseUrl)
+      : join(import.meta.dirname, '..')
     return tsconfigCache
   } catch {
     tsconfigCache.paths = null
-    tsconfigCache.baseUrl = process.cwd()
+    tsconfigCache.baseUrl = join(import.meta.dirname, '..')
     return tsconfigCache
   }
 }
@@ -167,6 +179,10 @@ export async function resolve(
   next: (specifier: string, ctx: { parentURL: string }) => Promise<void>
 ) {
   if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
+    return next(specifier, ctx)
+  }
+
+  if (!isTypeScriptSpecifier(specifier)) {
     return next(specifier, ctx)
   }
 
@@ -185,9 +201,9 @@ export async function resolve(
   }
 
   const parentPath = fileURLToPath(ctx.parentURL)
-  const parentDir = path.dirname(parentPath)
+  const parentDir = dirname(parentPath)
 
-  const basePath = path.resolve(parentDir, specifier)
+  const basePath = join(parentDir, specifier)
 
   const tryFiles = [
     basePath,
@@ -198,13 +214,13 @@ export async function resolve(
     basePath + '.js',
     basePath + '.mjs',
     basePath + '.cjs',
-    path.join(basePath, 'index.ts'),
-    path.join(basePath, 'index.tsx'),
-    path.join(basePath, 'index.mts'),
-    path.join(basePath, 'index.cts'),
-    path.join(basePath, 'index.js'),
-    path.join(basePath, 'index.mjs'),
-    path.join(basePath, 'index.cjs')
+    join(basePath, 'index.ts'),
+    join(basePath, 'index.tsx'),
+    join(basePath, 'index.mts'),
+    join(basePath, 'index.cts'),
+    join(basePath, 'index.js'),
+    join(basePath, 'index.mjs'),
+    join(basePath, 'index.cjs')
   ]
 
   for (const file of tryFiles) {
@@ -229,7 +245,7 @@ export async function load(
   ctx: unknown,
   next: (url: string, ctx: unknown) => void
 ) {
-  if (!url.startsWith('file://') || !TS_SOURCE_RE.test(url)) {
+  if (!url.startsWith('file://') || !hasTypeScriptExtension(url)) {
     return next(url, ctx)
   }
 
