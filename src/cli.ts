@@ -1,20 +1,25 @@
 #!/usr/bin/env node
 
 import { program } from 'commander'
-import { extname, join, relative } from 'node:path'
+import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { fork } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
 import { watch } from 'chokidar'
 import type { Stats } from 'node:fs'
 
 import { name, description, version } from './metadata'
+import { clearResolveCache, invalidateFileCaches } from './cache'
+import { debounce, yellow } from './util'
 
 const DEFAULT_INCLUDE_PATHS = ['.']
 const DEFAULT_EXCLUDE_PATHS = ['dist', 'build', 'coverage']
 const DEFAULT_WATCH_EXTENSIONS = ['ts', 'tsx', 'js', 'jsx', 'json']
 const INTERNAL_IGNORED_PATHS = ['node_modules', '.git']
+const WATCH_DEBOUNCE_MS = 100
+const CHILD_EXIT_TIMEOUT_MS = 300
 
-const pids = new Set<number>()
+const children = new Set<ChildProcess>()
 
 program
   .name(name)
@@ -22,10 +27,14 @@ program
   .version(version, '-v, --version', 'Output the current version')
   .showSuggestionAfterError()
 
-function cleanup() {
-  for (const pid of pids.values()) {
+function cleanup(signal: 'SIGINT' | 'SIGTERM') {
+  process.stdout.write(
+    `${yellow(`Received ${signal}. Stopping watcher and child processes...`)}\n`
+  )
+
+  for (const child of children.values()) {
     try {
-      process.kill(pid, 'SIGTERM')
+      child.kill('SIGTERM')
     } catch {
       //
     }
@@ -33,11 +42,15 @@ function cleanup() {
   process.exit(0)
 }
 
-process.on('SIGINT', cleanup)
-process.on('SIGTERM', cleanup)
+process.on('SIGINT', function () {
+  cleanup('SIGINT')
+})
+process.on('SIGTERM', function () {
+  cleanup('SIGTERM')
+})
 
 function spawn(entry: string, nodeArgs: string[]) {
-  const { pid } = fork(join(process.cwd(), entry), {
+  const child = fork(join(process.cwd(), entry), {
     stdio: 'inherit',
     execArgv: [
       '--enable-source-maps',
@@ -48,7 +61,28 @@ function spawn(entry: string, nodeArgs: string[]) {
     ]
   })
 
-  if (pid) pids.add(pid)
+  children.add(child)
+  child.once('exit', function () {
+    children.delete(child)
+  })
+}
+
+async function waitForChildExit(child: ChildProcess): Promise<boolean> {
+  if (child.exitCode !== null || child.signalCode !== null) return true
+
+  return await new Promise<boolean>(function (resolve) {
+    const timeout = setTimeout(function () {
+      child.off('exit', handleExit)
+      resolve(false)
+    }, CHILD_EXIT_TIMEOUT_MS)
+
+    function handleExit() {
+      clearTimeout(timeout)
+      resolve(true)
+    }
+
+    child.once('exit', handleExit)
+  })
 }
 
 function normalizePath(value: string) {
@@ -60,6 +94,19 @@ function normalizePath(value: string) {
 
 function normalizeExt(value: string) {
   return value.trim().replace(/^\./, '').toLowerCase()
+}
+
+function hasIgnoredSegment(filePath: string, ignoredSegments: Set<string>) {
+  let start = 0
+
+  for (let index = 0; index <= filePath.length; index++) {
+    if (index !== filePath.length && filePath[index] !== '/') continue
+
+    if (ignoredSegments.has(filePath.slice(start, index))) return true
+    start = index + 1
+  }
+
+  return false
 }
 
 type WatchOptions = {
@@ -75,10 +122,13 @@ function createWatchConfig(options: WatchOptions) {
   )
 
   const excludePaths = options.exclude.map(normalizePath).filter(Boolean)
-
-  const excludeSet = new Set(excludePaths)
-
+  const excludedExactPaths = new Set(excludePaths)
+  const excludedSegments = new Set(
+    excludePaths.filter((value) => !value.includes('/'))
+  )
+  const excludedPrefixes = excludePaths.map((value) => value + '/')
   const allowedExts = new Set(options.ext.map(normalizeExt).filter(Boolean))
+  const internalIgnoredSegments = new Set(INTERNAL_IGNORED_PATHS)
 
   function toRelativeFromRoot(sourceRoot: string, filePath: string): string {
     const rel = normalizePath(relative(sourceRoot, filePath))
@@ -91,16 +141,13 @@ function createWatchConfig(options: WatchOptions) {
     if (rel === '..' || rel.startsWith('../')) return true
     if (rel === '.') return false
 
-    const segments = rel.split('/')
+    if (hasIgnoredSegment(rel, internalIgnoredSegments)) return true
+    if (hasIgnoredSegment(rel, excludedSegments)) return true
+    if (excludedExactPaths.has(rel)) return true
 
-    if (segments.some((segment) => INTERNAL_IGNORED_PATHS.includes(segment)))
-      return true
-    if (segments.some((segment) => excludeSet.has(segment))) return true
-
-    const isExcludedByPath = excludePaths.some(
-      (excluded) => rel === excluded || rel.startsWith(excluded + '/')
-    )
-    if (isExcludedByPath) return true
+    for (const excludedPrefix of excludedPrefixes) {
+      if (rel.startsWith(excludedPrefix)) return true
+    }
 
     if (!stats || stats.isDirectory()) return false
 
@@ -123,7 +170,47 @@ async function handler(
   nodeArgs: string[],
   isWatch: boolean
 ): Promise<void> {
+  async function restart(reason?: string) {
+    process.stdout.write('\x1Bc')
+
+    if (reason) {
+      console.log(yellow(reason))
+    }
+
+    for (const child of children.values()) {
+      try {
+        child.kill('SIGTERM')
+      } catch {
+        continue
+      }
+
+      const exited = await waitForChildExit(child)
+
+      if (exited) continue
+
+      console.log(
+        yellow(
+          `${reason ?? 'Restart requested.'} Process hasn't exited. Killing process...`
+        )
+      )
+
+      try {
+        child.kill('SIGKILL')
+      } catch {
+        //
+      }
+    }
+
+    clearResolveCache()
+    spawn(entry, nodeArgs)
+  }
+
+  const restartDebounced = debounce(restart, WATCH_DEBOUNCE_MS)
+
   process.stdout.write('\x1Bc')
+  if (isWatch) {
+    console.log(yellow('Watching for changes...'))
+  }
   spawn(entry, nodeArgs)
 
   if (!isWatch) return
@@ -136,20 +223,22 @@ async function handler(
     ignored
   })
 
-  watcher.on('change', async function () {
-    process.stdout.write('\x1Bc')
-
-    for (const pid of pids.values()) {
-      try {
-        process.kill(pid)
-      } catch {
-        //
-      }
+  watcher.on('all', async function (eventName, changedPath) {
+    if (
+      eventName !== 'change' &&
+      eventName !== 'add' &&
+      eventName !== 'unlink'
+    ) {
+      return
     }
 
-    pids.clear()
+    await invalidateFileCaches(
+      isAbsolute(changedPath) ? changedPath : (
+        resolve(process.cwd(), changedPath)
+      )
+    )
 
-    spawn(entry, nodeArgs)
+    restartDebounced(`Change detected (${eventName}): ${changedPath}`)
   })
 }
 
