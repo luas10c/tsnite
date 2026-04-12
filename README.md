@@ -5,63 +5,163 @@
 [![prettier](https://img.shields.io/badge/Prettier-de9954?logo=prettier&logoColor=ffffff)](https://img.shields.io/badge/Prettier-de9954?logo=prettier&logoColor=ffffff)
 [![github license](https://img.shields.io/github/license/luas10c/tsnite)](https://img.shields.io/github/license/luas10c/tsnite)
 
-```
-TypeScript at full throttle—fast, safe, unstoppable. 🚀
-```
+TypeScript runner for Node.js with watch mode, `tsconfig` path alias support, and extensionless TypeScript import resolution.
 
-`tsnite` is a tool that accelerates TypeScript project development, offering a streamlined build and run experience. Ideal for developers seeking productivity without compromising security and performance.
-
-### 🚀 Installation
-
-To add `tsnite` to your project as a development dependency, run:
+## Install
 
 ```bash
-npm install tsnite -D
+npm install --save-dev tsnite
 ```
 
-Or, if you're using Yarn:
+## Usage
+
+Run a TypeScript entry file:
 
 ```bash
-yarn add --dev tsnite
+npx tsnite src/index.ts
 ```
 
-### ⚡ Features
-
-- **Decorators** first-class support for TypeScript decorators.
-- **Simple integration** with existing projects.
-- **ESM Support** native support for modern JavaScript modules.
-- **Automatic `tsconfig.json` loading** – respects your project configuration.
-
-### 🛠️ How to use
-
-With `tsnite` installed, you can use it directly in your terminal to run TypeScript files without needing to compile them first.
-
-### Run a TypeScript file
+Run in watch mode:
 
 ```bash
-npx tsnite path/to/file.ts
+npx tsnite watch src/index.ts
 ```
 
-This will execute the specified TypeScript file, allowing you to quickly test and run scripts during development.
+Pass extra Node.js arguments after the entry file:
 
-## 💡 Tips & Best Practices
+```bash
+npx tsnite src/index.ts --env-file=.env
+```
 
-- **Use with `package.json` scripts** – integrate `tsnite` into `npm` or `yarn` scripts for a smoother workflow.
-  Example:
-  ```json
-  {
-    "scripts": {
-      //...
-      "dev": "tsnite watch --include src --exclude uploads --ext js,ts,json src/index.ts"
+Use in `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "tsnite src/index.ts",
+    "dev:watch": "tsnite watch src/index.ts"
+  }
+}
+```
+
+## Features
+
+- Run `.ts`, `.tsx`, `.mts`, and `.cts` files directly in Node.js
+- Watch mode with automatic restart
+- Reads the current project's `tsconfig.json`
+- Resolves `compilerOptions.paths`
+- Resolves extensionless TypeScript imports
+- ESM-friendly runtime
+- Decorator support in transpilation
+
+## Import Resolution
+
+`tsnite` resolves TypeScript files without requiring explicit extensions.
+
+These imports work:
+
+```ts
+import './server'
+import './components/App'
+```
+
+It will try these TypeScript candidates:
+
+- `./server.ts`
+- `./server.tsx`
+- `./server.mts`
+- `./server.cts`
+- `./server/index.ts`
+- `./server/index.tsx`
+- `./server/index.mts`
+- `./server/index.cts`
+
+Explicit JavaScript imports such as `.js`, `.mjs`, and `.cjs` are delegated to Node.js.
+
+## `tsconfig` Paths
+
+`tsnite` supports `compilerOptions.paths` aliases.
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "#/*": ["src/*"]
     }
   }
-  ```
+}
+```
 
-## 📚 More information
+Then this works without an extension:
 
-Check the official npm page for details, examples, and updates:
-[https://www.npmjs.com/package/tsnite](https://www.npmjs.com/package/tsnite)
+```ts
+import { getMetadata } from '#/common/metadata'
+```
 
-#
+If `baseUrl` is not defined, `tsnite` uses the project root by default.
 
-Enjoy developing TypeScript at full throttle!
+## Watch Mode
+
+Customize watched paths and extensions:
+
+```bash
+npx tsnite watch --include src --exclude dist,coverage,uploads --ext ts,tsx,js,jsx,json src/index.ts
+```
+
+Options:
+
+- `--include <paths>` comma-separated paths to watch
+- `--exclude <paths>` comma-separated paths to ignore
+- `--ext <extensions>` comma-separated file extensions to watch
+- `--source-root <path>` base path used by the watcher
+
+Defaults:
+
+- include: `.`
+- exclude: `node_modules,.git,dist,build,coverage`
+- ext: `ts,tsx,js,jsx,json`
+- source root: `.`
+
+## Example
+
+`tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "target": "es2024",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "#/*": ["src/*"]
+    }
+  }
+}
+```
+
+`src/index.ts`
+
+```ts
+import { startServer } from '#/server/start'
+
+await startServer()
+```
+
+Run it:
+
+```bash
+npx tsnite src/index.ts
+```
+
+## Notes
+
+- `tsnite` is focused on development-time execution
+- the current project's `tsconfig.json` is used
+- watch mode clears cached resolution and transpilation state before restart
+
+## Links
+
+- npm: <https://www.npmjs.com/package/tsnite>
+- repository: <https://github.com/luas10c/tsnite>
