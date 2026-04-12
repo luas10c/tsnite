@@ -41,6 +41,74 @@ function isTypeScriptSpecifier(specifier: string): boolean {
   return extension === '' || hasTypeScriptExtension(extension)
 }
 
+function getTypeScriptTryFiles(basePath: string): string[] {
+  return [
+    basePath,
+    ...TS_EXTENSIONS.map((extension) => basePath + extension),
+    ...TS_EXTENSIONS.map((extension) => join(basePath, 'index' + extension))
+  ]
+}
+
+async function resolveTypeScriptFile(basePath: string): Promise<string | null> {
+  for (const file of getTypeScriptTryFiles(basePath)) {
+    if (await existsWithCache(file)) {
+      return file
+    }
+  }
+
+  return null
+}
+
+function matchPathPattern(specifier: string, pattern: string): string[] | null {
+  const starIndex = pattern.indexOf('*')
+
+  if (starIndex === -1) {
+    return specifier === pattern ? [] : null
+  }
+
+  const prefix = pattern.slice(0, starIndex)
+  const suffix = pattern.slice(starIndex + 1)
+
+  if (!specifier.startsWith(prefix) || !specifier.endsWith(suffix)) {
+    return null
+  }
+
+  return [specifier.slice(prefix.length, specifier.length - suffix.length)]
+}
+
+function applyPathMapping(target: string, matches: string[]): string {
+  let mapped = target
+
+  for (const match of matches) {
+    mapped = mapped.replace('*', match)
+  }
+
+  return mapped
+}
+
+async function resolveTsConfigPath(
+  specifier: string,
+  paths: Record<string, string[]> | null,
+  baseUrl: string | null
+): Promise<string | null> {
+  if (!paths || !baseUrl || !isTypeScriptSpecifier(specifier)) {
+    return null
+  }
+
+  for (const [pattern, targets] of Object.entries(paths)) {
+    const matches = matchPathPattern(specifier, pattern)
+    if (!matches) continue
+
+    for (const target of targets) {
+      const mappedTarget = applyPathMapping(target, matches)
+      const resolved = await resolveTypeScriptFile(join(baseUrl, mappedTarget))
+      if (resolved) return resolved
+    }
+  }
+
+  return null
+}
+
 type TranspileCacheEntry = {
   code: string
   mtimeMs: number
@@ -146,10 +214,7 @@ async function loadTSConfig(): Promise<{
   }
 
   try {
-    const data = await readFile(
-      join(import.meta.dirname, '..', 'tsconfig.json'),
-      'utf-8'
-    )
+    const data = await readFile(join(process.cwd(), 'tsconfig.json'), 'utf-8')
     const { compilerOptions } = parse<{
       compilerOptions?: {
         paths?: Record<string, string[]>
@@ -162,13 +227,11 @@ async function loadTSConfig(): Promise<{
 
     tsconfigCache.paths = paths || null
     tsconfigCache.baseUrl =
-      baseUrl ?
-        join(import.meta.dirname, '..', baseUrl)
-      : join(import.meta.dirname, '..')
+      baseUrl ? join(process.cwd(), baseUrl) : process.cwd()
     return tsconfigCache
   } catch {
     tsconfigCache.paths = null
-    tsconfigCache.baseUrl = join(import.meta.dirname, '..')
+    tsconfigCache.baseUrl = process.cwd()
     return tsconfigCache
   }
 }
@@ -178,6 +241,23 @@ export async function resolve(
   ctx: { parentURL: string },
   next: (specifier: string, ctx: { parentURL: string }) => Promise<void>
 ) {
+  const { paths, baseUrl } = await loadTSConfig()
+  const resolvedTsConfigPath = await resolveTsConfigPath(
+    specifier,
+    paths,
+    baseUrl
+  )
+
+  if (resolvedTsConfigPath) {
+    const url = pathToFileURL(resolvedTsConfigPath).href
+    resolveCache.set(`${ctx.parentURL}::${specifier}`, url)
+    return {
+      url,
+      format: 'module',
+      shortCircuit: true
+    }
+  }
+
   if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
     return next(specifier, ctx)
   }
@@ -248,8 +328,6 @@ export async function load(
   if (!url.startsWith('file://') || !hasTypeScriptExtension(url)) {
     return next(url, ctx)
   }
-
-  const { paths, baseUrl } = await loadTSConfig()
 
   const filename = fileURLToPath(url)
   const fileStats = await stat(filename)
