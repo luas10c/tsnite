@@ -1,7 +1,7 @@
 {
   "name": "tsnite",
   "description": "TypeScript at full throttle—fast, safe, unstoppable. 🚀",
-  "version": "0.1.5",
+  "version": "0.2.3",
   "keywords": [
     "cli",
     "esm",
