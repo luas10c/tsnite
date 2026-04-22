@@ -13,6 +13,8 @@
 
     "esModuleInterop": true,
 
+    "types": ["node"],
+
     "paths": {
       "#/*": ["./src/*"]
     }

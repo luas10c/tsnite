@@ -10,5 +10,7 @@ coverage
 
 .eslintcache
 
+*.tsbuildinfo
+
 .env*
 !.env.example

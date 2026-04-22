@@ -1,11 +1,19 @@
-# tsnite
+<h1 align="center">
+<br>
+<img alt="tsnite" src="https://github.com/luas10c/tsnite/blob/main/tsnite.png?raw=true">
+<br><br>
+<a href="https://npm.im/tsnite"><img src="https://badgen.net/npm/v/tsnite"></a>
+<a href="https://npm.im/tsnite"><img src="https://badgen.net/npm/dm/tsnite"></a>
+<a href="https://npm.im/tsnite"><img src="https://img.shields.io/badge/ESLint-3A33D1?logo=eslint" alt="eslint"></a>
+<a href="https://npm.im/tsnite"><img src="https://img.shields.io/badge/Prettier-21323b?logo=prettier&logoColor=ffffff" alt="prettier"></a>
+<a href="https://npm.im/tsnite"><img src="https://img.shields.io/github/license/luas10c/tsnite" alt="github license"></a>
+</h1>
 
-[![npm version](https://img.shields.io/npm/v/tsnite.svg)](https://www.npmjs.com/package/tsnite)
-[![Eslint](https://img.shields.io/badge/ESLint-3A33D1?logo=eslint)](https://img.shields.io/badge/ESLint-3A33D1?logo=eslint)
-[![prettier](https://img.shields.io/badge/Prettier-de9954?logo=prettier&logoColor=ffffff)](https://img.shields.io/badge/Prettier-de9954?logo=prettier&logoColor=ffffff)
-[![github license](https://img.shields.io/github/license/luas10c/tsnite)](https://img.shields.io/github/license/luas10c/tsnite)
-
-TypeScript runner for Node.js with watch mode, `tsconfig` path alias support, and extensionless TypeScript import resolution.
+<p align="center">
+TypeScript at full throttle—fast, safe, unstoppable. 🚀
+<br><br>
+<a href="https://github.com/luas10c/tsnite">Documentation</a>&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/luas10c/tsnite">Getting started →</a>
+</p>
 
 ## Install
 
@@ -13,7 +21,15 @@ TypeScript runner for Node.js with watch mode, `tsconfig` path alias support, an
 npm install --save-dev tsnite
 ```
 
-## Usage
+## Features
+
+- ESM-friendly runtime
+- Watch mode with automatic restart
+- Supports `compilerOptions.paths`
+- Resolves extensionless TypeScript imports
+- Decorator support
+
+## Quick Start
 
 Run a TypeScript entry file:
 
@@ -44,16 +60,6 @@ Use in `package.json`:
 }
 ```
 
-## Features
-
-- Run `.ts`, `.tsx`, `.mts`, and `.cts` files directly in Node.js
-- Watch mode with automatic restart
-- Reads the current project's `tsconfig.json`
-- Resolves `compilerOptions.paths`
-- Resolves extensionless TypeScript imports
-- ESM-friendly runtime
-- Decorator support in transpilation
-
 ## Import Resolution
 
 `tsnite` resolves TypeScript files without requiring explicit extensions.
@@ -78,29 +84,6 @@ It will try these TypeScript candidates:
 
 Explicit JavaScript imports such as `.js`, `.mjs`, and `.cjs` are delegated to Node.js.
 
-## `tsconfig` Paths
-
-`tsnite` supports `compilerOptions.paths` aliases.
-
-```json
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "#/*": ["src/*"]
-    }
-  }
-}
-```
-
-Then this works without an extension:
-
-```ts
-import { getMetadata } from '#/common/metadata'
-```
-
-If `baseUrl` is not defined, `tsnite` uses the project root by default.
-
 ## Watch Mode
 
 Customize watched paths and extensions:
@@ -123,45 +106,14 @@ Defaults:
 - ext: `ts,tsx,js,jsx,json`
 - source root: `.`
 
-## Example
+## Support
 
-`tsconfig.json`
+Enjoying this tool? Consider supporting the project.
 
-```json
-{
-  "compilerOptions": {
-    "target": "es2024",
-    "module": "es2022",
-    "moduleResolution": "bundler",
-    "baseUrl": ".",
-    "paths": {
-      "#/*": ["src/*"]
-    }
-  }
-}
-```
+<p>
+  <a href="https://buymeacoffee.com/luas10c" target="_blank" rel="noopener noreferrer"><img src="https://github.com/luas10c/tsnite/blob/main/buymeacoffe.png?raw=true" alt="Buy me a coffee" width="180" /></a>
+</p>
 
-`src/index.ts`
+## License
 
-```ts
-import { startServer } from '#/server/start'
-
-await startServer()
-```
-
-Run it:
-
-```bash
-npx tsnite src/index.ts
-```
-
-## Notes
-
-- `tsnite` is focused on development-time execution
-- the current project's `tsconfig.json` is used
-- watch mode clears cached resolution and transpilation state before restart
-
-## Links
-
-- npm: <https://www.npmjs.com/package/tsnite>
-- repository: <https://github.com/luas10c/tsnite>
+[MIT](LICENSE)

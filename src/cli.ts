@@ -10,7 +10,7 @@ import type { Stats } from 'node:fs'
 
 import { name, description, version } from './metadata'
 import { clearResolveCache, invalidateFileCaches } from './cache'
-import { debounce, yellow } from './util'
+import { debounce, cyan, gray, red, yellow } from './util'
 
 const DEFAULT_INCLUDE_PATHS = ['.']
 const DEFAULT_EXCLUDE_PATHS = ['dist', 'build', 'coverage']
@@ -29,7 +29,7 @@ program
 
 function cleanup(signal: 'SIGINT' | 'SIGTERM') {
   process.stdout.write(
-    `${yellow(`Received ${signal}. Stopping watcher and child processes...`)}\n`
+    `${yellow(`Received`)} ${cyan(signal)}${yellow('. Stopping watcher and child processes...')}\n`
   )
 
   for (const child of children.values()) {
@@ -49,11 +49,15 @@ process.on('SIGTERM', function () {
   cleanup('SIGTERM')
 })
 
-function spawn(entry: string, nodeArgs: string[]) {
+function spawn(entry: string, nodeArgs: string[], shouldLogTranspile: boolean) {
   const entryPath = isAbsolute(entry) ? entry : resolve(process.cwd(), entry)
 
   const child = fork(entryPath, {
     stdio: 'inherit',
+    env: {
+      ...process.env,
+      TSNITE_LOG_TRANSPILE: shouldLogTranspile ? '1' : '0'
+    },
     execArgv: [
       '--enable-source-maps',
       '--no-experimental-strip-types',
@@ -178,7 +182,7 @@ async function handler(
     process.stdout.write('\x1Bc')
 
     if (reason) {
-      console.log(yellow(reason))
+      console.log(gray(reason))
     }
 
     for (const child of children.values()) {
@@ -193,9 +197,7 @@ async function handler(
       if (exited) continue
 
       console.log(
-        yellow(
-          `${reason ?? 'Restart requested.'} Process hasn't exited. Killing process...`
-        )
+        `${yellow('restart')} ${gray('process unresponsive, sending')} ${red('SIGKILL')}`
       )
 
       try {
@@ -206,7 +208,7 @@ async function handler(
     }
 
     clearResolveCache()
-    spawn(runtimeEntry, nodeArgs)
+    spawn(runtimeEntry, nodeArgs, isWatch)
   }
 
   const restartDebounced = debounce(restart, WATCH_DEBOUNCE_MS)
@@ -215,7 +217,7 @@ async function handler(
   if (isWatch) {
     console.log(yellow('Watching for changes...'))
   }
-  spawn(runtimeEntry, nodeArgs)
+  spawn(runtimeEntry, nodeArgs, isWatch)
 
   if (!isWatch) return
 
@@ -236,13 +238,14 @@ async function handler(
       return
     }
 
-    await invalidateFileCaches(
+    const absoluteChangedPath =
       isAbsolute(changedPath) ? changedPath : (
         resolve(process.cwd(), changedPath)
       )
-    )
 
-    restartDebounced(`Change detected (${eventName}): ${changedPath}`)
+    await invalidateFileCaches(absoluteChangedPath)
+
+    restartDebounced()
   })
 }
 
