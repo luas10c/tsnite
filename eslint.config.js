@@ -6,7 +6,6 @@ import js from '@eslint/js'
 
 import ts from 'typescript-eslint'
 
-import prettier from 'eslint-plugin-prettier'
 
 import jest from 'eslint-plugin-jest'
 
@@ -15,9 +14,9 @@ export default defineConfig([
   js.configs.recommended,
   ts.configs.recommended,
   {
-    name: 'prettier/recommended',
+    name: 'stylistic/recommended',
     plugins: {
-      prettier
+      '@stylistic': stylistic
     },
     languageOptions: {
       ecmaVersion: 'latest',
@@ -28,7 +27,30 @@ export default defineConfig([
       sourceType: 'module'
     },
     rules: {
-      ...prettier.configs.recommended.rules
+            '@stylistic/quotes': ['error', 'single', {
+        avoidEscape: true
+      }],
+      '@stylistic/semi': ['error', 'never'],
+      '@stylistic/comma-dangle': ['error', 'never'],
+      '@stylistic/object-curly-spacing': ['error', 'always'],
+      '@stylistic/quote-props': ['error', 'consistent'],
+      '@stylistic/arrow-parens': ['error', 'always'],
+      '@stylistic/jsx-quotes': ['error', 'prefer-double'],
+      '@stylistic/jsx-curly-brace-presence': ['error', {
+        props: 'never',
+        children: 'never'
+      }],
+      '@stylistic/jsx-first-prop-new-line': ['error', 'multiline'],
+      '@stylistic/jsx-max-props-per-line': ['error', {
+        maximum: 1,
+        when: 'multiline'
+      }],
+      '@stylistic/indent': ['error', 2, {
+        SwitchCase: 1
+      }],
+      '@stylistic/no-tabs': 'error',
+      '@stylistic/eol-last': ['error', 'always'],
+      '@stylistic/linebreak-style': ['error', 'unix']
     }
   },
   {
