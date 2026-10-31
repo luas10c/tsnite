@@ -1,5 +1,15 @@
-import { join } from 'node:path'
-import { register } from 'node:module'
-import { pathToFileURL } from 'node:url'
+import { registerHooks, register } from 'node:module'
 
-register(pathToFileURL(join(import.meta.dirname, 'loader.js')).href)
+
+if (typeof registerHooks === 'function') {
+  registerHooks({
+    resolve(specifier, context, next) {
+      return next(specifier, context)
+    }
+  })
+} else if (typeof register === 'function') {
+  register(new URL('./loader.js', import.meta.url))
+} else {
+  throw new Error('Unsupported Node.js version: module hooks are not available!')
+}
+
