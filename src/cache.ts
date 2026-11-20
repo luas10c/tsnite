@@ -1,17 +1,23 @@
 import { createHash } from 'node:crypto'
 import { mkdir, rm, stat } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { mkdirSync, rmSync, statSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const resolveCache = new Map<string, string | null>()
 
 const statCache = new Map<string, { exists: boolean; mtime?: number }>()
 
+function getCurrentDir(): string {
+  return import.meta.dirname ?? dirname(fileURLToPath(import.meta.url))
+}
+
 function getTranspileCacheDir(): string {
-  return join(import.meta.dirname, '..', 'node_modules', '.cache', 'tsnite')
+  return join(getCurrentDir(), '..', 'node_modules', '.cache', 'tsnite')
 }
 
 function getTSConfigPath(): string {
-  return join(import.meta.dirname, '..', 'tsconfig.json')
+  return join(getCurrentDir(), '..', 'tsconfig.json')
 }
 
 function hash(value: string): string {
@@ -24,6 +30,21 @@ export async function existsWithCache(filePath: string): Promise<boolean> {
 
   try {
     const stats = await stat(filePath)
+    const exists = stats.isFile()
+    statCache.set(filePath, { exists, mtime: stats.mtimeMs })
+    return exists
+  } catch {
+    statCache.set(filePath, { exists: false })
+    return false
+  }
+}
+
+export function existsWithCacheSync(filePath: string): boolean {
+  const cached = statCache.get(filePath)
+  if (cached) return cached.exists
+
+  try {
+    const stats = statSync(filePath)
     const exists = stats.isFile()
     statCache.set(filePath, { exists, mtime: stats.mtimeMs })
     return exists
@@ -49,8 +70,16 @@ export async function ensureTranspileCacheDir(): Promise<void> {
   await mkdir(getTranspileCacheDir(), { recursive: true })
 }
 
+export function ensureTranspileCacheDirSync(): void {
+  mkdirSync(getTranspileCacheDir(), { recursive: true })
+}
+
 export async function clearTranspileCache(): Promise<void> {
   await rm(getTranspileCacheDir(), { recursive: true, force: true })
+}
+
+export function clearTranspileCacheSync(): void {
+  rmSync(getTranspileCacheDir(), { recursive: true, force: true })
 }
 
 export function isTSConfigPath(filePath: string): boolean {
