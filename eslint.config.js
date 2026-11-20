@@ -6,6 +6,7 @@ import js from '@eslint/js'
 
 import ts from 'typescript-eslint'
 
+import stylistic from '@stylistic/eslint-plugin'
 
 import jest from 'eslint-plugin-jest'
 
@@ -27,7 +28,7 @@ export default defineConfig([
       sourceType: 'module'
     },
     rules: {
-            '@stylistic/quotes': ['error', 'single', {
+      '@stylistic/quotes': ['error', 'single', {
         avoidEscape: true
       }],
       '@stylistic/semi': ['error', 'never'],
