@@ -58,18 +58,15 @@ const transpileCache = new Map<
 
 const MAX_TRANSPILE_CACHE_ENTRIES = 256
 const TS_EXTENSIONS = ['.cts', '.mts', '.tsx', '.ts']
-const RELATIVE_EXTENSIONS = [
-  '.ts',
-  '.tsx',
-  '.mts',
-  '.cts',
-  '.js',
-  '.mjs',
-  '.cjs'
-]
+const RELATIVE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts']
 
 function hasTypeScriptExtension(value: string): boolean {
   return TS_EXTENSIONS.some((extension) => value.endsWith(extension))
+}
+
+function isInNodeModules(value: string | undefined | null): boolean {
+  if (!value) return false
+  return /[/\\]node_modules[/\\]/.test(value)
 }
 
 function isTypeScriptSpecifier(specifier: string): boolean {
@@ -472,6 +469,10 @@ export async function resolve(
     ctx: ResolveHookContext
   ) => Promise<ResolveHookResult> | Promise<void> | ResolveHookResult
 ) {
+  if (isInNodeModules(ctx?.parentURL)) {
+    return next(specifier, ctx)
+  }
+
   const { paths, baseUrl } = await loadTSConfig()
   const resolvedTsConfigPath = await resolveTsConfigPath(
     specifier,
@@ -510,7 +511,7 @@ export async function resolve(
 
       return {
         url: cached,
-        format: 'module',
+        format: hasTypeScriptExtension(cached) ? 'module' : undefined,
         shortCircuit: true
       }
     }
@@ -526,7 +527,7 @@ export async function resolve(
       }
       return {
         url,
-        format: 'module',
+        format: hasTypeScriptExtension(file) ? 'module' : undefined,
         shortCircuit: true
       }
     }
@@ -547,6 +548,10 @@ export function resolveSync(
     ctx: ResolveHookContext
   ) => ResolveHookResult
 ): ResolveHookResult {
+  if (isInNodeModules(ctx?.parentURL)) {
+    return next(specifier, ctx)
+  }
+
   const { paths, baseUrl } = loadTSConfigSync()
   const resolvedTsConfigPath = resolveTsConfigPathSync(
     specifier,
@@ -585,7 +590,7 @@ export function resolveSync(
 
       return {
         url: cached,
-        format: 'module',
+        format: hasTypeScriptExtension(cached) ? 'module' : undefined,
         shortCircuit: true
       }
     }
@@ -601,7 +606,7 @@ export function resolveSync(
       }
       return {
         url,
-        format: 'module',
+        format: hasTypeScriptExtension(file) ? 'module' : undefined,
         shortCircuit: true
       }
     }
